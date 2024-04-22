@@ -31,7 +31,7 @@ end
 local default_opts = {
 	echo = true,
 	symbol = "🐍",
-	venv_patterns = { "venv", ".venv", ".python-version" },
+	venv_patterns = { "venv", ".venv", ".python-version", ".python-virtualenv" },
 	use_tools = true,
 	tools = {
 		pipenv = { "pipenv", "--venv" },
@@ -40,6 +40,7 @@ local default_opts = {
 	},
 	venv_locations = {
 		(vim.env["PYENV_ROOT"] or vim.loop.os_homedir() .. "/.pyenv") .. "/versions",
+		(vim.env["RSVENV_PATH"] or vim.loop.os_homedir() .. "/.rsvenv") .. "/venvs",
 		vim.env["WORKON_HOME"],
 	},
 	---@type table<string, fun(venv_path:string):table>

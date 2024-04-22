@@ -6,9 +6,9 @@
 
 Automatically find project's virtual-environment using various strategies:
 
-- Searches for `venv`, `.venv`, `.python-version`
+- Searches for `venv`, `.venv`, `.python-version`, `.python-virtualenv`
   - If directory, use as virtual-environment. Great for in-project environments.
-  - If a file, read the first line as path. Good for pyenv/virtualenvwrapper
+  - If a file, read the first line as path. Good for pyenv/virtualenvwrapper/rsvenv
 - Otherwise, use 3rd-party tools to find one:
   - `poetry env info -p`
   - `pipenv --venv`
