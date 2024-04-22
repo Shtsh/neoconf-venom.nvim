@@ -1,14 +1,14 @@
 -- venom: discover venv and automatically set LSP servers
 -- https://github.com/rafi/neoconf-venom.nvim
 
-local is_windows = vim.loop.os_uname().version:match('Windows')
-local Util = require('neoconf.util')
-local has_plenary, Job = pcall(require, 'plenary.job')
+local is_windows = vim.loop.os_uname().version:match("Windows")
+local Util = require("neoconf.util")
+local has_plenary, Job = pcall(require, "plenary.job")
 if not has_plenary then
-	Util.error('venom requires https://github.com/nvim-lua/plenary.nvim')
+	Util.error("venom requires https://github.com/nvim-lua/plenary.nvim")
 	return
 end
-local Path = require('plenary.path')
+local Path = require("plenary.path")
 
 local M = {}
 
@@ -24,23 +24,23 @@ local cached_unresolved_paths = {}
 ---@param filename string
 ---@return boolean
 local function is_dir(filename)
-	return Util.exists(filename) == 'directory'
+	return Util.exists(filename) == "directory"
 end
 
 ---@class VenomConfig
 local default_opts = {
 	echo = true,
-	symbol = '🐍',
-	venv_patterns = { 'venv', '.venv', '.python-version' },
+	symbol = "🐍",
+	venv_patterns = { "venv", ".venv", ".python-version" },
 	use_tools = true,
 	tools = {
-		pipenv = { 'pipenv', '--venv' },
-		poetry = { 'poetry', 'env', 'info', '-p' },
-		hatch = { 'hatch', 'env', 'find' },
+		pipenv = { "pipenv", "--venv" },
+		poetry = { "poetry", "env", "info", "-p" },
+		hatch = { "hatch", "env", "find" },
 	},
 	venv_locations = {
-		(vim.env['PYENV_ROOT'] or vim.loop.os_homedir()..'/.pyenv') .. '/versions',
-		vim.env['WORKON_HOME'],
+		(vim.env["PYENV_ROOT"] or vim.loop.os_homedir() .. "/.pyenv") .. "/versions",
+		vim.env["WORKON_HOME"],
 	},
 	---@type table<string, fun(venv_path:string):table>
 	plugins = {
@@ -49,7 +49,7 @@ local default_opts = {
 		---@return table
 		pyright = function(venv_path)
 			if is_dir(venv_path) then
-				venv_path = table.concat({ venv_path, 'bin', 'python' }, '/')
+				venv_path = table.concat({ venv_path, "bin", "python" }, "/")
 			end
 			return {
 				python = { pythonPath = venv_path },
@@ -71,26 +71,26 @@ local default_opts = {
 ---@return boolean
 local function is_absolute(filename)
 	if is_windows then
-		return filename:match('^%a:') or filename:match('^\\\\')
+		return filename:match("^%a:") or filename:match("^\\\\")
 	else
-		return filename:match('^/')
+		return filename:match("^/")
 	end
 end
 
 ---@param ... string
 ---@return string
 local function path_join(...)
-	return table.concat(vim.tbl_flatten { ... }, '/')
+	return table.concat(vim.tbl_flatten({ ... }), "/")
 end
 
 --- Verifies python executable exists in a venv.
 ---@param venv_path string
 ---@return boolean
 local function is_venv(venv_path)
-	if venv_path == '' or venv_path == nil then
+	if venv_path == "" or venv_path == nil then
 		return false
 	end
-	local bin = path_join(venv_path, 'bin', 'python')
+	local bin = path_join(venv_path, "bin", "python")
 	return is_dir(venv_path) and Util.exists(bin)
 end
 
@@ -98,9 +98,9 @@ end
 ---@return string
 local function find_with_tools()
 	for _, cmd in pairs(vim.deepcopy(opts.tools)) do
-		if type(cmd) ~= 'table' then
-			Util.error('[venom] tools value has to be a table')
-			return ''
+		if type(cmd) ~= "table" then
+			Util.error("[venom] tools value has to be a table")
+			return ""
 		end
 
 		local command = table.remove(cmd, 1)
@@ -121,14 +121,11 @@ local function find_with_tools()
 				end
 			end
 			if #stderr > 0 then
-				Util.error(
-					string.format('Erroneous shell output from %s: %s',
-						command, vim.inspect(stderr))
-				)
+				Util.error(string.format("Erroneous shell output from %s: %s", command, vim.inspect(stderr)))
 			end
 		end
 	end
-	return ''
+	return ""
 end
 
 -- Finds a virtual-environment by using multiple strategies for provided
@@ -157,14 +154,14 @@ local function find_virtualenv(path)
 
 	-- Return first found match.
 	for _, found_path in ipairs(found_paths) do
-		if found_path == nil or found_path == '' then
+		if found_path == nil or found_path == "" then
 			-- skip
 		elseif is_venv(found_path) then
 			return found_path
-		elseif Util.exists(found_path) == 'file' then
+		elseif Util.exists(found_path) == "file" then
 			-- Read location of virtual-environment from text-file
 			local user_dir = Path:new(found_path):head(1)
-			if not (user_dir == nil or user_dir == '') then
+			if not (user_dir == nil or user_dir == "") then
 				-- Use file contents as an absolute path
 				if is_absolute(user_dir) and is_venv(found_path) then
 					return user_dir
@@ -179,7 +176,7 @@ local function find_virtualenv(path)
 			end
 		end
 	end
-	return ''
+	return ""
 end
 
 ---@param venv_path string
@@ -190,7 +187,7 @@ local function apply_function(venv_path, setter, client)
 	local new_config = setter(venv_path)
 	if not vim.tbl_isempty(new_config) then
 		Util.merge(client.config.settings, new_config)
-		local ok = pcall(client.notify, 'workspace/didChangeConfiguration', {
+		local ok = pcall(client.notify, "workspace/didChangeConfiguration", {
 			settings = nil,
 			-- settings = new_config,
 		})
@@ -205,14 +202,14 @@ end
 local function apply_venom_plugins(client, venv_path)
 	for lsp_name, setter in pairs(opts.plugins) do
 		if client.name == lsp_name then
-			local msg = vim.fn.fnamemodify(venv_path, ':~')
+			local msg = vim.fn.fnamemodify(venv_path, ":~")
 			if apply_function(venv_path, setter, client) then
 				if opts.echo then
-					local title = 'Virtual-environment set (' .. lsp_name .. ')'
+					local title = "Virtual-environment set (" .. lsp_name .. ")"
 					vim.notify(msg, vim.log.levels.INFO, { title = title })
 				end
 			else
-				local title = 'Failed setting virtual-environment (' .. lsp_name .. ')'
+				local title = "Failed setting virtual-environment (" .. lsp_name .. ")"
 				vim.notify(msg, vim.log.levels.ERROR, { title = title })
 			end
 		end
@@ -235,12 +232,12 @@ local function lsp_client_on_init(root_dir)
 
 		-- Find virtualenv's python binary with multiple methods.
 		local venv_path = find_virtualenv(root_dir)
-		if venv_path == '' or not is_dir(venv_path) then
+		if venv_path == "" or not is_dir(venv_path) then
 			if opts.use_tools then
 				-- Use predefined executables to find virtualenv's location.
 				venv_path = find_with_tools()
 			end
-			if venv_path == '' or not is_dir(venv_path) then
+			if venv_path == "" or not is_dir(venv_path) then
 				cached_unresolved_paths[root_dir] = true
 				return false
 			end
@@ -248,7 +245,7 @@ local function lsp_client_on_init(root_dir)
 
 		-- Cache and update LSP clients with found venv python binary.
 		cached_venvs[root_dir] = venv_path
-		vim.api.nvim_buf_set_var(0, 'virtual_env', venv_path)
+		vim.api.nvim_buf_set_var(0, "virtual_env", venv_path)
 		apply_venom_plugins(client, venv_path)
 		return true
 	end
@@ -271,7 +268,7 @@ end
 ---@return table|nil
 function M.find_python_runtimes()
 	if is_windows then
-		vim.notify('Error: Doesn\'t work on Windows yet.', vim.log.levels.ERROR)
+		vim.notify("Error: Doesn't work on Windows yet.", vim.log.levels.ERROR)
 		return
 	end
 
@@ -279,8 +276,8 @@ function M.find_python_runtimes()
 	local stderr = {}
 
 	local stdout, ret = Job:new({
-		command = 'which',
-		args = { '-a', 'python', 'python3' },
+		command = "which",
+		args = { "-a", "python", "python3" },
 		on_stderr = function(_, data)
 			table.insert(stderr, data)
 		end,
@@ -291,14 +288,14 @@ function M.find_python_runtimes()
 			table.insert(venvs, venv)
 		end
 	else
-		Util.error(string.format('Erroneous shell output: %s', vim.inspect(stderr)))
+		Util.error(string.format("Erroneous shell output: %s", vim.inspect(stderr)))
 		return
 	end
 
-	if vim.fn.executable('pyenv') == 1 then
+	if vim.fn.executable("pyenv") == 1 then
 		stdout, ret = Job:new({
-			command = 'pyenv',
-			args = { 'root' },
+			command = "pyenv",
+			args = { "root" },
 			on_stderr = function(_, data)
 				table.insert(stderr, data)
 			end,
@@ -306,7 +303,7 @@ function M.find_python_runtimes()
 
 		if ret == 0 then
 			local pyenv_root = stdout[1]
-			local versions = vim.fn.globpath(pyenv_root, 'versions/*/bin/python', 0, 1)
+			local versions = vim.fn.globpath(pyenv_root, "versions/*/bin/python", 0, 1)
 			for _, venv in ipairs(versions) do
 				table.insert(venvs, venv)
 			end
@@ -314,7 +311,7 @@ function M.find_python_runtimes()
 	end
 
 	if #stderr > 0 then
-		Util.error(string.format('Erroneous shell output: %s', vim.inspect(stderr)))
+		Util.error(string.format("Erroneous shell output: %s", vim.inspect(stderr)))
 	end
 	return venvs
 end
@@ -325,7 +322,7 @@ end
 local function setup_neoconf_plugin(plugin_name)
 	return function()
 		Util.on_config({
-			name = 'settings/plugins/' .. plugin_name,
+			name = "settings/plugins/" .. plugin_name,
 			on_config = function(client, root_dir)
 				if client.name == plugin_name then
 					client.on_init = lsp_client_on_init(root_dir)
@@ -338,11 +335,11 @@ end
 --- Statusline friendly Venom section.
 ---@return string
 function M.statusline()
-	local venv_path = vim.b['virtual_env'] or vim.env.VIRTUAL_ENV
-	if not (venv_path == nil or venv_path == '') then
-		return vim.fs.basename(venv_path) .. ' ' .. opts.symbol
+	local venv_path = vim.b["virtual_env"] or vim.env.VIRTUAL_ENV
+	if not (venv_path == nil or venv_path == "") then
+		return vim.fs.basename(venv_path) .. " " .. opts.symbol
 	end
-	return ''
+	return ""
 end
 
 -- Setup Venom: Register as neoconf plugins.
@@ -350,16 +347,16 @@ end
 function M.setup(user_opts)
 	opts = Util.merge({}, default_opts, user_opts or {})
 	vim.validate({
-		echo = { opts.echo, 'b', true },
-		symbol = { opts.symbol, 's', true },
-		venv_patterns = { opts.venv_patterns, 't', true },
-		use_tools = { opts.use_tools, 'b', true },
-		tools = { opts.tools, 't', true },
+		echo = { opts.echo, "b", true },
+		symbol = { opts.symbol, "s", true },
+		venv_patterns = { opts.venv_patterns, "t", true },
+		use_tools = { opts.use_tools, "b", true },
+		tools = { opts.tools, "t", true },
 	})
 
 	-- Register Neoconf plugins.
 	for lsp_name, _ in pairs(opts.plugins) do
-		require('neoconf.plugins').register({
+		require("neoconf.plugins").register({
 			setup = setup_neoconf_plugin(lsp_name),
 		})
 	end
